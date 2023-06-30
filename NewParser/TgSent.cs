@@ -52,7 +52,7 @@ namespace NewParser
                 this.token = token;
             }
 
-            public List<Article> ParseArticle(string siteUrl, long chatId)
+            public Article ParseArticle(string siteUrl, long chatId)
             {
                 TelegramMessageSender messageSender = new TelegramMessageSender(bot, token);
                 IWebDriver driver = new ChromeDriver();
@@ -68,9 +68,11 @@ namespace NewParser
 
                     List<Article> articles = new List<Article>();
 
+                    Article article = null;
+
                     for (int i = 0; i < news.Count; i++)
                     {
-                        Article article = new Article
+                        article = new Article
                         {
                             Title = news[i].Text,
                             Body = newsBody[i].Text,
@@ -82,25 +84,22 @@ namespace NewParser
 
                         articles.Add(article);
 
-                        // Отправляем сообщение в телеграм
-                        messageSender.SendMessage(chatId);
+                        //messageSender.SendMessage(chatId);
                     }
 
-                    return articles;
+                    return article;
                 }
                 catch (Exception ex)
                 {
                     Console.WriteLine("Ошибка парсинга статьи: " + ex.Message);
+                    return null;
                 }
                 finally
                 {
                     driver.Quit();
                     driver.Dispose();
                 }
-
-                return null;
             }
-
         }
 
         public class TelegramMessageSender : IMessageSender
@@ -116,17 +115,24 @@ namespace NewParser
 
             public async void SendMessage(long chatId)
             {
-                Article run = new Article();
+                try
+                {
+                    Article run = new Article();
 
-                await bot.SendTextMessageAsync(
-                    chatId: new ChatId(chatId),
-                    text: $"Новость: \n Заголовок: {run.Title} \n Тело: {run.Body} \n",
-                    disableNotification: true,
-                    replyMarkup: new InlineKeyboardMarkup(
-                        InlineKeyboardButton.WithUrl(
-                            text: "Перейти на новость",
-                            url: run.Url))
-                );
+                    await bot.SendTextMessageAsync(
+                        chatId: new ChatId(chatId),
+                        text: $"Новость: \n Заголовок: {run.Title} \n Тело: {run.Body} \n",
+                        disableNotification: true,
+                        replyMarkup: new InlineKeyboardMarkup(
+                            InlineKeyboardButton.WithUrl(
+                                text: "Перейти на новость",
+                                url: run.Url))
+                    );
+                }
+                catch(Exception ex)
+                {
+                    Console.WriteLine("Ошибка при отправке сообщения: " + ex.Message);
+                }
             }
         }
     }
