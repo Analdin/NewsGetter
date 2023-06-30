@@ -10,16 +10,15 @@ namespace NewParser
 {
     public class Program
     {
-        private string token = "5812061300:AAEmdV68-k0tN258qY56UZXrQb_6-qR6BYo";
-        private TelegramBotClient bot;
-        private static long chatId = 1001717429781;
+        private static string token = "5812061300:AAEmdV68-k0tN258qY56UZXrQb_6-qR6BYo";
+        private static long chatId = -1001717429781;
         //1001717429781
         //1001710371108
 
         static void Main(string[] args)
         {
-            TelegramBotClient bot = new TelegramBotClient("5812061300:AAEmdV68-k0tN258qY56UZXrQb_6-qR6BYo");
-            TgSent tgSent = new TgSent(new TgSent.WebsiteArticleParser(bot, "5812061300:AAEmdV68-k0tN258qY56UZXrQb_6-qR6BYo"), new TgSent.TelegramMessageSender(bot, "5812061300:AAEmdV68-k0tN258qY56UZXrQb_6-qR6BYo"));
+            TelegramBotClient bot = new TelegramBotClient(token);
+            TgSent tgSent = new TgSent(new WebsiteArticleParser(bot, token), new TelegramMessageSender(bot, token));
             tgSent.messageSender.SendMessage(chatId);
         }
     }

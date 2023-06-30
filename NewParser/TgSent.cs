@@ -13,16 +13,12 @@ using System.Threading;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Telegram.Bot.Types.Enums;
 
 namespace NewParser
 {
     public class TgSent
     {
-        private string token = "5812061300:AAEmdV68-k0tN258qY56UZXrQb_6-qR6BYo";
-        private TelegramBotClient bot;
-        private long chatId = -1001710371108;
-        private Random rnd = new Random();
-
         public IArticleParser articleParser;
         public IMessageSender messageSender;
 
@@ -147,8 +143,9 @@ namespace NewParser
                     {
                         await bot.SendTextMessageAsync(
                         chatId: chatId,
+                        parseMode: ParseMode.Html,
                         text: $"Новость: \n Заголовок: {article.Title} \n Тело: {article.Body} \n",
-                        disableNotification: true,
+                        disableNotification: false,
                         replyMarkup: new InlineKeyboardMarkup(
                             InlineKeyboardButton.WithUrl(
                                 text: "Перейти на новость",
