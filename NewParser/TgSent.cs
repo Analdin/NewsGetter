@@ -117,17 +117,31 @@ namespace NewParser
             {
                 try
                 {
-                    Article run = new Article();
+                    string siteUrl = String.Empty;
 
-                    await bot.SendTextMessageAsync(
+                    Article run = new Article();
+                    run.Url = siteUrl;
+
+                    IArticleParser articleParser = new WebsiteArticleParser(bot, token);
+                    IMessageSender messageSender = new TelegramMessageSender(bot, token);
+
+                    TgSent tgSent = new TgSent(articleParser, messageSender);
+
+                    List<Article> articles = articleParser.ParseArticle(siteUrl, chatId);
+                    //Article run = new Article();
+
+                    foreach(Article article in articles)
+                    {
+                        await bot.SendTextMessageAsync(
                         chatId: new ChatId(chatId),
-                        text: $"Новость: \n Заголовок: {run.Title} \n Тело: {run.Body} \n",
+                        text: $"Новость: \n Заголовок: {article.Title} \n Тело: {article.Body} \n",
                         disableNotification: true,
                         replyMarkup: new InlineKeyboardMarkup(
                             InlineKeyboardButton.WithUrl(
                                 text: "Перейти на новость",
-                                url: run.Url))
-                    );
+                                url: article.Url))
+                        );
+                    }
                 }
                 catch(Exception ex)
                 {
