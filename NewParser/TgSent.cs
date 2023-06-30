@@ -15,8 +15,8 @@ namespace NewParser
         private long chatId = -1001710371108;
         private Random rnd = new Random();
 
-        private IArticleParser articleParser;
-        private IMessageSender messageSender;
+        public IArticleParser articleParser;
+        public IMessageSender messageSender;
 
         public interface IArticleParser
         {
