@@ -57,6 +57,8 @@ namespace NewParser
                 TelegramMessageSender messageSender = new TelegramMessageSender(bot, token);
                 IWebDriver driver = new ChromeDriver();
 
+                siteUrl = "https://nostroy.ru/company/news/";
+
                 try
                 {
                     driver.Navigate().GoToUrl(siteUrl);
@@ -83,9 +85,8 @@ namespace NewParser
                         Console.WriteLine("Ссылка - " + article.Url);
 
                         articles.Add(article);
-
-                        //messageSender.SendMessage(chatId);
                     }
+                    messageSender.SendMessage(chatId);
 
                     return articles;
                 }
@@ -128,9 +129,8 @@ namespace NewParser
                     TgSent tgSent = new TgSent(articleParser, messageSender);
 
                     List<Article> articles = articleParser.ParseArticle(siteUrl, chatId);
-                    //Article run = new Article();
 
-                    foreach(Article article in articles)
+                    foreach (Article article in articles)
                     {
                         await bot.SendTextMessageAsync(
                         chatId: new ChatId(chatId),
