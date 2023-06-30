@@ -142,8 +142,8 @@ namespace NewParser
                     foreach (Article article in articles)
                     {
                         await bot.SendTextMessageAsync(
-                        chatId: chatId,
-                        parseMode: ParseMode.Html,
+                        chatId: new ChatId(chatId),
+                        //parseMode: ParseMode.Html,
                         text: $"Новость: \n Заголовок: {article.Title} \n Тело: {article.Body} \n",
                         disableNotification: false,
                         replyMarkup: new InlineKeyboardMarkup(
@@ -152,6 +152,7 @@ namespace NewParser
                                 url: article.Url))
                         );
                     }
+                    Thread.Sleep(3000);
                 }
                 catch(Exception ex)
                 {
