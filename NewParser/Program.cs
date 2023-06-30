@@ -12,7 +12,9 @@ namespace NewParser
     {
         private string token = "5812061300:AAEmdV68-k0tN258qY56UZXrQb_6-qR6BYo";
         private TelegramBotClient bot;
-        private static long chatId = -1001710371108;
+        private static long chatId = 1001717429781;
+        //1001717429781
+        //1001710371108
 
         static void Main(string[] args)
         {

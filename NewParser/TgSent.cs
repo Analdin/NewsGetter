@@ -12,6 +12,7 @@ using OpenQA.Selenium.Chrome;
 using System.Threading;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace NewParser
 {
@@ -86,7 +87,7 @@ namespace NewParser
 
                         articles.Add(article);
                     }
-                    messageSender.SendMessage(chatId);
+                    //messageSender.SendMessage(chatId);
 
                     return articles;
                 }
@@ -130,10 +131,22 @@ namespace NewParser
 
                     List<Article> articles = articleParser.ParseArticle(siteUrl, chatId);
 
+                    await SendMessageArticles(articles, chatId);
+                }
+                catch(Exception ex)
+                {
+                    Console.WriteLine("Ошибка при отправке сообщения: " + ex.Message);
+                }
+            }
+
+            private async Task SendMessageArticles(List<Article> articles, long chatId)
+            {
+                try
+                {
                     foreach (Article article in articles)
                     {
                         await bot.SendTextMessageAsync(
-                        chatId: new ChatId(chatId),
+                        chatId: chatId,
                         text: $"Новость: \n Заголовок: {article.Title} \n Тело: {article.Body} \n",
                         disableNotification: true,
                         replyMarkup: new InlineKeyboardMarkup(
@@ -145,7 +158,7 @@ namespace NewParser
                 }
                 catch(Exception ex)
                 {
-                    Console.WriteLine("Ошибка при отправке сообщения: " + ex.Message);
+                    Console.WriteLine(ex.Message);
                 }
             }
         }
