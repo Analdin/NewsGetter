@@ -27,7 +27,7 @@ namespace NewParser
 
         public interface IArticleParser
         {
-            Article ParseArticle(string siteUrl, long chatId);
+            List<Article> ParseArticle(string siteUrl, long chatId);
         }
 
         public interface IMessageSender
@@ -52,7 +52,7 @@ namespace NewParser
                 this.token = token;
             }
 
-            public Article ParseArticle(string siteUrl, long chatId)
+            public List<Article> ParseArticle(string siteUrl, long chatId)
             {
                 TelegramMessageSender messageSender = new TelegramMessageSender(bot, token);
                 IWebDriver driver = new ChromeDriver();
@@ -87,7 +87,7 @@ namespace NewParser
                         //messageSender.SendMessage(chatId);
                     }
 
-                    return article;
+                    return articles;
                 }
                 catch (Exception ex)
                 {
