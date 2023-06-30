@@ -52,55 +52,50 @@ namespace NewParser
                 this.token = token;
             }
 
-            public Article ParseArticle(string siteUrl, long chatId)
+            public List<Article> ParseArticle(string siteUrl, long chatId)
             {
                 TelegramMessageSender messageSender = new TelegramMessageSender(bot, token);
                 IWebDriver driver = new ChromeDriver();
 
-                using (WebClient client = new WebClient())
+                try
                 {
-                    try
+                    driver.Navigate().GoToUrl(siteUrl);
+                    Thread.Sleep(2000);
+
+                    List<IWebElement> news = driver.FindElements(By.XPath("//div[contains(@class, 'm-info-item__title')]/a")).ToList();
+                    List<IWebElement> newsBody = driver.FindElements(By.XPath("//div[contains(@class, 'm-info-item__text')]/p")).ToList();
+                    List<IWebElement> articleUrls = driver.FindElements(By.XPath("//div[contains(@class, 'm-info-item__title')]/a")).ToList();
+
+                    List<Article> articles = new List<Article>();
+
+                    for (int i = 0; i < news.Count; i++)
                     {
-                        //client.Encoding = Encoding.UTF8;
-                        //string html = client.DownloadString(siteUrl);
-                        Console.WriteLine($"Отправили запрос к странице {siteUrl}");
-                        //Console.WriteLine($"{html}");
-
-                        driver.Navigate().GoToUrl(siteUrl);
-                        Thread.Sleep(2000);
-
-                        // Здесь происходит парсинг статьи из полученного HTML
-                        //MatchCollection news = Regex.Matches(siteUrl, @"(?<=class=""dark-color"">\ ).*(?=</a>\ )");
-                        //MatchCollection newsBody = Regex.Matches(siteUrl, @"(?<=text-align:\ justify;"">)[\w\W]*?(?=</p>)");
-                        //MatchCollection articleUrls = Regex.Matches(siteUrl, @"(?<=<a\ href="").*?(?=""\ class=""dark-color)");
-
-                        List<IWebElement> news = driver.FindElements(By.XPath("//div[contains(@class, 'm-info-item__title')]/a")).ToList();
-                        List<IWebElement> newsBody = driver.FindElements(By.XPath("//div[contains(@class, 'm-info-item__text')]/p")).ToList();
-                        List<IWebElement> articleUrls = driver.FindElements(By.XPath("//div[contains(@class, 'm-info-item__title')]/a")).ToList();
-
-                        for(int i = 0; i < news.Count; i++)
+                        Article article = new Article
                         {
-                            // Создаем объект Article с заполненными данными
-                            Article article = new Article
-                            {
-                                Title = news[i].Text,
-                                Body = newsBody[i].Text,
-                                Url = articleUrls[i].Text
-                            };
-                            Console.WriteLine("Заголовок - " + article.Title);
-                            Console.WriteLine("Тело - " + article.Body);
-                            Console.WriteLine("Ссылка - " + article.Url);
+                            Title = news[i].Text,
+                            Body = newsBody[i].Text,
+                            Url = articleUrls[i].GetAttribute("href")
+                        };
+                        Console.WriteLine("Заголовок - " + article.Title);
+                        Console.WriteLine("Тело - " + article.Body);
+                        Console.WriteLine("Ссылка - " + article.Url);
 
-                            // Отправляем сообщение в телеграм
-                            messageSender.SendMessage(chatId);
-                        }
+                        articles.Add(article);
 
-                        return article;
+                        // Отправляем сообщение в телеграм
+                        messageSender.SendMessage(chatId);
                     }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine("Ошибка парсинга статьи: " + ex.Message);
-                    }
+
+                    return articles;
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine("Ошибка парсинга статьи: " + ex.Message);
+                }
+                finally
+                {
+                    driver.Quit();
+                    driver.Dispose();
                 }
 
                 return null;
