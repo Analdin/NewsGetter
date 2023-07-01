@@ -61,6 +61,8 @@ namespace NewParser
                     driver.Navigate().GoToUrl(siteUrl);
                     Thread.Sleep(2000);
 
+                    // Подсчитываем кол-во страниц
+
                     List<IWebElement> news = driver.FindElements(By.XPath("//div[contains(@class, 'm-info-item__title')]/a")).ToList();
                     List<IWebElement> newsBody = driver.FindElements(By.XPath("//div[contains(@class, 'm-info-item__text')]/p")).ToList();
                     List<IWebElement> articleUrls = driver.FindElements(By.XPath("//div[contains(@class, 'm-info-item__title')]/a")).ToList();
