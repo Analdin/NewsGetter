@@ -11,10 +11,9 @@ namespace NewParser
     public class Program
     {
         public static string token = "5812061300:AAEmdV68-k0tN258qY56UZXrQb_6-qR6BYo";
-        public static long chatId = -1001717429781;
+        public static long chatId = -1001710371108;
         //1001717429781
         //1001710371108
-
         static void Main(string[] args)
         {
             RunBotAsync().GetAwaiter().GetResult();
@@ -30,7 +29,7 @@ namespace NewParser
             }
 
             TgSent tgSent = new TgSent(new WebsiteArticleParser(bot, token), new TelegramMessageSender(bot, token));
-            tgSent.messageSender.SendMessage(chatId);
+            await tgSent.messageSender.SendMessage(chatId);
         }
     }
 }

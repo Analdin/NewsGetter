@@ -29,7 +29,7 @@ namespace NewParser
 
         public interface IMessageSender
         {
-            void SendMessage(long chatId);
+            Task SendMessage(long chatId);
         }
 
         public TgSent(IArticleParser articleParser, IMessageSender messageSender)
@@ -113,7 +113,7 @@ namespace NewParser
                 this.token = token;
             }
 
-            public async void SendMessage(long chatId)
+            public Task SendMessage(long chatId)
             {
                 try
                 {
@@ -129,11 +129,12 @@ namespace NewParser
 
                     List<Article> articles = articleParser.ParseArticle(siteUrl, chatId);
 
-                    await SendMessageArticles(articles, chatId);
+                    return SendMessageArticles(articles, chatId);
                 }
-                catch(Exception ex)
+                catch (Exception ex)
                 {
                     Console.WriteLine("Ошибка при отправке сообщения: " + ex.Message);
+                    return Task.CompletedTask;
                 }
             }
 
@@ -145,12 +146,12 @@ namespace NewParser
                     {
                         await bot.SendTextMessageAsync(
                         chatId: new ChatId(chatId),
-                        //parseMode: ParseMode.Html,
-                        text: $"Новость: \n Заголовок: {article.Title} \n Тело: {article.Body} \n",
+                        text: $"<b>{article.Title}</b>\n\n{article.Body}\n",
                         disableNotification: false,
+                        parseMode: ParseMode.Html,
                         replyMarkup: new InlineKeyboardMarkup(
                             InlineKeyboardButton.WithUrl(
-                                text: "Перейти на новость",
+                                text: "Читать источник",
                                 url: article.Url))
                         );
                     }
