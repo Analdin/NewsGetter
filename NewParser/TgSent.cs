@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Net;
+using System.Net.Http;
 using System.Security.Cryptography;
 using Telegram.Bot;
 using Telegram.Bot.Types.ReplyMarkups;
@@ -14,6 +15,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Telegram.Bot.Types.Enums;
+using System.Net.Http;
+using System.IO;
 
 namespace NewParser
 {
@@ -51,6 +54,9 @@ namespace NewParser
 
             public List<Article> ParseArticle(string siteUrl, long chatId)
             {
+                // Список со ссылками на новости
+                List<string> allNewsLinks = new List<string>();
+
                 TelegramMessageSender messageSender = new TelegramMessageSender(bot, token);
                 IWebDriver driver = new ChromeDriver();
 
@@ -58,34 +64,53 @@ namespace NewParser
 
                 try
                 {
+                    List<Article> articles = new List<Article>();
                     driver.Navigate().GoToUrl(siteUrl);
                     Thread.Sleep(2000);
 
-                    // Подсчитываем кол-во страниц
+                    List<string> allLinks = new List<string>();
 
-                    List<IWebElement> news = driver.FindElements(By.XPath("//div[contains(@class, 'm-info-item__title')]/a")).ToList();
-                    List<IWebElement> newsBody = driver.FindElements(By.XPath("//div[contains(@class, 'm-info-item__text')]/p")).ToList();
-                    List<IWebElement> articleUrls = driver.FindElements(By.XPath("//div[contains(@class, 'm-info-item__title')]/a")).ToList();
-
-                    List<Article> articles = new List<Article>();
-
-                    Article article = null;
-
-                    for (int i = 0; i < news.Count; i++)
+                    List<IWebElement> allLinksToNews = driver.FindElements(By.XPath("//div[contains(@class, 'm-info-item__title')]/a")).ToList();
+                    foreach (var elm in allLinksToNews)
                     {
-                        article = new Article
-                        {
-                            Title = news[i].Text,
-                            Body = newsBody[i].Text,
-                            Url = articleUrls[i].GetAttribute("href")
-                        };
-                        Console.WriteLine("Заголовок - " + article.Title);
-                        Console.WriteLine("Тело - " + article.Body);
-                        Console.WriteLine("Ссылка - " + article.Url);
-
-                        articles.Add(article);
+                        string lone = elm.GetAttribute("href");
+                        allNewsLinks.Add(lone);
+                        Console.WriteLine(elm.GetAttribute("href"));
+                        allLinks.Add(elm.GetAttribute("href"));
                     }
-                    //messageSender.SendMessage(chatId);
+
+                    for(int y = 0; y < allLinks.Count; y++)
+                    {
+                        string articleUrl = allLinks[0];
+                        Console.WriteLine("Текущая ссылка: " + articleUrl);
+                        driver.Navigate().GoToUrl(articleUrl);
+                        allLinks.RemoveAt(0);
+                        allLinks.Add(articleUrl);
+
+                        // Собираем сссылки на страницы с новостями:
+                        string newsTitle = driver.FindElement(By.XPath("//div[contains(@class, 'info-detail__name')]/h2")).Text;
+                        List<IWebElement> newsBodyElements = driver.FindElements(By.XPath("//div[contains(@class, 'info-detail__content-text')]")).ToList();
+
+                        Article article = null;
+
+                        foreach (var newsBodyElement in newsBodyElements)
+                        {
+                            string newsBody = newsBodyElement.Text;
+
+                            article = new Article
+                            {
+                                Title = newsTitle,
+                                Body = newsBody,
+                                Url = articleUrl
+                            };
+
+                            Console.WriteLine("Заголовок - " + article.Title);
+                            Console.WriteLine("Тело - " + article.Body);
+                            Console.WriteLine("Ссылка - " + article.Url);
+
+                            articles.Add(article);
+                        }
+                    }
 
                     return articles;
                 }
@@ -144,6 +169,12 @@ namespace NewParser
                 {
                     foreach (Article article in articles)
                     {
+                        await bot.SendPhotoAsync(
+                            chatId: new ChatId(chatId),
+                            photo: InputFile.FromUri(article.ImgUrl),
+                            parseMode: ParseMode.Html
+                        );
+
                         await bot.SendTextMessageAsync(
                         chatId: new ChatId(chatId),
                         text: $"<b>{article.Title}</b>\n\n{article.Body}\n",
@@ -170,5 +201,34 @@ namespace NewParser
         public string Title { get; set; }
         public string Body { get; set; }
         public string Url { get; set; }
+        public string ImgUrl { get; set; }
+    }
+
+    public class ImageGetter
+    {
+        static async Task GetImg(string picUrl)
+        {
+            using(HttpClient client = new HttpClient())
+            {
+                try
+                {
+                    HttpResponseMessage response = await client.GetAsync(picUrl);
+                    response.EnsureSuccessStatusCode();
+
+                    byte[] imageBytes = await response.Content.ReadAsByteArrayAsync();
+
+                    // Сохранение картинки в файл
+                    string filePath = Directory.GetCurrentDirectory() + @"\Img\image.jpg";
+                    System.IO.File.WriteAllBytes(filePath, imageBytes);
+
+                    Console.WriteLine("Картинка успешно скачана.");
+                }
+                catch(Exception ex)
+                {
+                    Console.WriteLine("Ошибка при скачивании картинки: " + ex.Message);
+                }
+            }
+
+        }
     }
 }

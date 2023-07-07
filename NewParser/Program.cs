@@ -29,6 +29,9 @@ namespace NewParser
             }
 
             TgSent tgSent = new TgSent(new WebsiteArticleParser(bot, token), new TelegramMessageSender(bot, token));
+            
+            string siteUrl = "https://nostroy.ru/company/news/";
+
             await tgSent.messageSender.SendMessage(chatId);
         }
     }
