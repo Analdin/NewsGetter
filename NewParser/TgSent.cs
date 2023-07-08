@@ -1,13 +1,8 @@
 ﻿using System;
-using System.Net;
 using System.Net.Http;
-using System.Security.Cryptography;
 using Telegram.Bot;
 using Telegram.Bot.Types.ReplyMarkups;
 using Telegram.Bot.Types;
-using System.Security.Policy;
-using System.Text.RegularExpressions;
-using System.Text;
 using OpenQA.Selenium;
 using OpenQA.Selenium.Chrome;
 using System.Threading;
@@ -15,7 +10,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Telegram.Bot.Types.Enums;
-using System.Net.Http;
 using System.IO;
 
 namespace NewParser
@@ -87,9 +81,19 @@ namespace NewParser
                         allLinks.RemoveAt(0);
                         allLinks.Add(articleUrl);
 
+                        string imgUrl = String.Empty;
+
+                        Thread.Sleep(3000);
+
                         // Собираем сссылки на страницы с новостями:
                         string newsTitle = driver.FindElement(By.XPath("//div[contains(@class, 'info-detail__name')]/h2")).Text;
                         List<IWebElement> newsBodyElements = driver.FindElements(By.XPath("//div[contains(@class, 'info-detail__content-text')]")).ToList();
+                        List<IWebElement> urlGetter = driver.FindElements(By.XPath("//div[contains(@class, 'info-detail__image-block')]/a/img")).ToList();
+
+                        if(urlGetter.Count > 0)
+                        {
+                            imgUrl = urlGetter.FirstOrDefault().GetAttribute("src");
+                        }
 
                         Article article = null;
 
@@ -97,16 +101,27 @@ namespace NewParser
                         {
                             string newsBody = newsBodyElement.Text;
 
+                            if (newsBody.Length > 500 && !String.IsNullOrWhiteSpace(imgUrl))
+                            {
+                                newsBody = newsBody.Substring(0, 500);
+                            }
+                            else if (newsBody.Length > 4000 && String.IsNullOrWhiteSpace(imgUrl))
+                            {
+                                newsBody = newsBody.Substring(0, 4000);
+                            }
+
                             article = new Article
                             {
                                 Title = newsTitle,
                                 Body = newsBody,
-                                Url = articleUrl
+                                Url = articleUrl,
+                                ImgUrl = imgUrl
                             };
 
                             Console.WriteLine("Заголовок - " + article.Title);
                             Console.WriteLine("Тело - " + article.Body);
                             Console.WriteLine("Ссылка - " + article.Url);
+                            Console.WriteLine("Ссылка на картинку - " + article.ImgUrl);
 
                             articles.Add(article);
                         }
@@ -169,22 +184,37 @@ namespace NewParser
                 {
                     foreach (Article article in articles)
                     {
-                        await bot.SendPhotoAsync(
-                            chatId: new ChatId(chatId),
-                            photo: InputFile.FromUri(article.ImgUrl),
-                            parseMode: ParseMode.Html
-                        );
+                        if (String.IsNullOrWhiteSpace(article.Title))
+                        {
+                            article.Title = "***";
+                        }
 
-                        await bot.SendTextMessageAsync(
-                        chatId: new ChatId(chatId),
-                        text: $"<b>{article.Title}</b>\n\n{article.Body}\n",
-                        disableNotification: false,
-                        parseMode: ParseMode.Html,
-                        replyMarkup: new InlineKeyboardMarkup(
-                            InlineKeyboardButton.WithUrl(
-                                text: "Читать источник",
-                                url: article.Url))
-                        );
+                        if (!String.IsNullOrWhiteSpace(article.ImgUrl))
+                        {
+                            await bot.SendPhotoAsync(
+                                chatId: new ChatId(chatId),
+                                photo: InputFile.FromUri(article.ImgUrl),
+                                caption: $"<b>{article.Title}</b>\n\n{article.Body}\n",
+                                parseMode: ParseMode.Html,
+                                replyMarkup: new InlineKeyboardMarkup(
+                                InlineKeyboardButton.WithUrl(
+                                    text: "Читать источник",
+                                    url: article.Url))
+                            );
+                        }
+                        else
+                        {
+                            await bot.SendTextMessageAsync(
+                            chatId: new ChatId(chatId),
+                            text: $"<b>{article.Title}</b>\n\n{article.Body}\n",
+                            disableNotification: false,
+                            parseMode: ParseMode.Html,
+                            replyMarkup: new InlineKeyboardMarkup(
+                                InlineKeyboardButton.WithUrl(
+                                    text: "Читать источник",
+                                    url: article.Url))
+                            );
+                        }
                     }
                     Thread.Sleep(3000);
                 }
