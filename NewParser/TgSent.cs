@@ -11,6 +11,8 @@ using System.Linq;
 using System.Threading.Tasks;
 using Telegram.Bot.Types.Enums;
 using System.IO;
+using System.Text;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace NewParser
 {
@@ -26,7 +28,7 @@ namespace NewParser
 
         public interface IMessageSender
         {
-            Task SendMessage(long chatId);
+            Task SendMessage(long chatId, List<Article> articles);
         }
 
         public TgSent(IArticleParser articleParser, IMessageSender messageSender)
@@ -54,8 +56,6 @@ namespace NewParser
                 TelegramMessageSender messageSender = new TelegramMessageSender(bot, token);
                 IWebDriver driver = new ChromeDriver();
 
-                siteUrl = "https://nostroy.ru/company/news/";
-
                 try
                 {
                     List<Article> articles = new List<Article>();
@@ -64,7 +64,17 @@ namespace NewParser
 
                     List<string> allLinks = new List<string>();
 
-                    List<IWebElement> allLinksToNews = driver.FindElements(By.XPath("//div[contains(@class, 'm-info-item__title')]/a")).ToList();
+                    List<IWebElement> allLinksToNews = new List<IWebElement>();
+
+                    if (siteUrl.Contains("gosnadzor"))
+                    {
+                        allLinksToNews = driver.FindElements(By.XPath("//div[contains(@class, 'news-list')]/p/a")).ToList();
+                    }
+                    else
+                    {
+                        allLinksToNews = driver.FindElements(By.XPath("//div[contains(@class, 'm-info-item__title')]/a")).ToList();
+                    }
+                    
                     foreach (var elm in allLinksToNews)
                     {
                         string lone = elm.GetAttribute("href");
@@ -86,8 +96,34 @@ namespace NewParser
                         Thread.Sleep(3000);
 
                         // Собираем сссылки на страницы с новостями:
-                        string newsTitle = driver.FindElement(By.XPath("//div[contains(@class, 'info-detail__name')]/h2")).Text;
-                        List<IWebElement> newsBodyElements = driver.FindElements(By.XPath("//div[contains(@class, 'info-detail__content-text')]")).ToList();
+                        string newsTitle = String.Empty;
+
+                        ((IJavaScriptExecutor)driver).ExecuteScript("window.stop();");
+
+                        if (articleUrl.Contains("gosnadzor"))
+                        {
+                            newsTitle = driver.FindElement(By.XPath("//h1[contains(@id, 'page_title')]")).Text;
+                        }
+                        else
+                        {
+                            newsTitle = driver.FindElement(By.XPath("//div[contains(@class, 'info-detail__name')]/h2")).Text;
+                        }
+
+                        string xpath = String.Empty;
+
+                        if (articleUrl.Contains("gosnadzor"))
+                        {
+                            xpath = "//div[contains(@class, 'news-detail')]/p";
+                        }
+                        else
+                        {
+                            xpath = "//div[contains(@class, 'info-detail__content-text')]/p";
+                        }
+
+                        TextAlign align = new TextAlign();
+                        List<string> FullText = align.TextGlu(driver, xpath);
+
+                        //List<IWebElement> newsBodyElements = driver.FindElements(By.XPath("//div[contains(@class, 'info-detail__content-text')]")).ToList();
                         List<IWebElement> urlGetter = driver.FindElements(By.XPath("//div[contains(@class, 'info-detail__image-block')]/a/img")).ToList();
 
                         if(urlGetter.Count > 0)
@@ -97,9 +133,10 @@ namespace NewParser
 
                         Article article = null;
 
-                        foreach (var newsBodyElement in newsBodyElements)
+                        foreach (var newsBodyElement in FullText)
                         {
-                            string newsBody = newsBodyElement.Text;
+                            //string newsBody = newsBodyElement.Text;
+                            string newsBody = newsBodyElement;
 
                             if (newsBody.Length > 500 && !String.IsNullOrWhiteSpace(imgUrl))
                             {
@@ -153,7 +190,7 @@ namespace NewParser
                 this.token = token;
             }
 
-            public Task SendMessage(long chatId)
+            public Task SendMessage(long chatId, List<Article> articles)
             {
                 try
                 {
@@ -166,8 +203,6 @@ namespace NewParser
                     IMessageSender messageSender = new TelegramMessageSender(bot, token);
 
                     TgSent tgSent = new TgSent(articleParser, messageSender);
-
-                    List<Article> articles = articleParser.ParseArticle(siteUrl, chatId);
 
                     return SendMessageArticles(articles, chatId);
                 }
@@ -194,25 +229,25 @@ namespace NewParser
                             await bot.SendPhotoAsync(
                                 chatId: new ChatId(chatId),
                                 photo: InputFile.FromUri(article.ImgUrl),
-                                caption: $"<b>{article.Title}</b>\n\n{article.Body}\n",
-                                parseMode: ParseMode.Html,
-                                replyMarkup: new InlineKeyboardMarkup(
-                                InlineKeyboardButton.WithUrl(
-                                    text: "Читать источник",
-                                    url: article.Url))
+                                caption: $"<b>{article.Title}</b>\n\n{article.Body}\n\n<a href=\"{article.Url}\">Читать источник</a>",
+                                parseMode: ParseMode.Html
+                                //replyMarkup: new InlineKeyboardMarkup(
+                                //InlineKeyboardButton.WithUrl(
+                                    //text: "Читать источник",
+                                    //url: article.Url))
                             );
                         }
                         else
                         {
                             await bot.SendTextMessageAsync(
                             chatId: new ChatId(chatId),
-                            text: $"<b>{article.Title}</b>\n\n{article.Body}\n",
+                            text: $"<b>{article.Title}</b>\n\n{article.Body}\n\n<a href=\"{article.Url}\">Читать источник</a>",
                             disableNotification: false,
-                            parseMode: ParseMode.Html,
-                            replyMarkup: new InlineKeyboardMarkup(
-                                InlineKeyboardButton.WithUrl(
-                                    text: "Читать источник",
-                                    url: article.Url))
+                            parseMode: ParseMode.Html
+                            //replyMarkup: new InlineKeyboardMarkup(
+                                //InlineKeyboardButton.WithUrl(
+                                    //text: "Читать источник",
+                                    //url: article.Url))
                             );
                         }
                     }
@@ -234,31 +269,50 @@ namespace NewParser
         public string ImgUrl { get; set; }
     }
 
-    public class ImageGetter
+    public class TextAlign
     {
-        static async Task GetImg(string picUrl)
+        public List<string> TextGlu(IWebDriver driver, string xpath)
         {
-            using(HttpClient client = new HttpClient())
+            int maxLength = 700;
+
+            IReadOnlyCollection<IWebElement> paragraphElements = driver.FindElements(By.XPath(xpath));
+            List<string> paragraphTexts = new List<string>();
+            foreach (IWebElement paragraphElement in paragraphElements)
             {
-                try
-                {
-                    HttpResponseMessage response = await client.GetAsync(picUrl);
-                    response.EnsureSuccessStatusCode();
-
-                    byte[] imageBytes = await response.Content.ReadAsByteArrayAsync();
-
-                    // Сохранение картинки в файл
-                    string filePath = Directory.GetCurrentDirectory() + @"\Img\image.jpg";
-                    System.IO.File.WriteAllBytes(filePath, imageBytes);
-
-                    Console.WriteLine("Картинка успешно скачана.");
-                }
-                catch(Exception ex)
-                {
-                    Console.WriteLine("Ошибка при скачивании картинки: " + ex.Message);
-                }
+                string paragraphText = paragraphElement.Text.Trim();
+                paragraphTexts.Add(paragraphText);
             }
+            string combinedText = string.Join(" ",paragraphTexts);
+            paragraphTexts.Clear();
+            paragraphTexts.Add(combinedText);
 
+            // Раздбиваем текст на абзацы
+            //paragraphTexts.Clear();
+            //paragraphTexts.Add(combinedText);
+
+            //string[] sentences = combinedText.Split('.');
+            //StringBuilder paragraph = new StringBuilder();
+
+            //foreach (string sentence in sentences)
+            //{
+            //    if(paragraph.Length + sentence.Length + 1 <= maxLength)
+            //    {
+            //        paragraph.Append(sentence.Trim());
+            //    }
+            //    else
+            //    {
+            //        paragraphTexts.Add(paragraph.ToString().Trim()); // Завершаем текущий абзац и добавляем его в список
+            //        paragraph.Clear(); // Очищаем текущий абзац
+            //        paragraph.Append(sentence.Trim() + ". ");
+            //    }
+            //}
+
+            //if(paragraph.Length > 0)
+            //{
+            //    paragraphTexts.Add(paragraph.ToString().Trim());
+            //}
+
+            return paragraphTexts;
         }
     }
 }
